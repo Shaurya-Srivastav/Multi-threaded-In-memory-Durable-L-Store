@@ -6,34 +6,21 @@ class TransactionWorker:
     """
     # Creates a transaction worker object.
     """
-    def __init__(self, transactions = []):
-        self.stats = []
+    def __init__(self, transactions=[]):
         self.transactions = transactions
+        self.stats = []
         self.result = 0
-        pass
 
-    
-    """
-    Appends t to transactions
-    """
     def add_transaction(self, t):
         self.transactions.append(t)
 
-        
-    """
-    Runs all transaction as a thread
-    """
     def run(self):
-        pass
-        # here you need to create a thread and call __run
-    
+        # single-threaded for milestone1
+        self.__run()
 
-    """
-    Waits for the worker to finish
-    """
     def join(self):
+        # no-op
         pass
-
 
     def __run(self):
         for transaction in self.transactions:

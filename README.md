@@ -1,5 +1,16 @@
 # Single-threaded-In-memory-L-Store
 
+
+## Contributions:
+
+Shaurya Srivastav - Implementation
+Vedant Patel - Implementation
+Ayush Tripathi - Coordination and Assignment, assisted with initial knowledge base
+Stella Huang - Initial research + class implementations
+Muhammad Laiq - Assisted in initial abstraction of roles
+
+
+
 The project is organized around three core components:
 
 Data Model (S1)

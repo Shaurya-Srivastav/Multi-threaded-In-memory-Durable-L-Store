@@ -10,6 +10,8 @@ class Page:
     def __init__(self):
         self.num_records = 0
         self.data = bytearray(4096)  # unused
+        self.pin_count = 0
+        self.is_dirty = False
 
     def has_capacity(self):
         return self.num_records < Page.PAGE_CAPACITY

@@ -18,6 +18,7 @@ class Record:
         self.rid = rid
         self.key = key
         self.columns = columns
+        self.tps = ""
 
 class Table:
     """

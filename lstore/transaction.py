@@ -4,12 +4,12 @@ class Transaction:
     def __init__(self):
         self.queries = []
 
-    def add_query(self, func, table, *args):
-        self.queries.append((func, args))
+    def add_query(self, query, table, *args):
+        self.queries.append((query, args))
 
     def run(self):
-        for (f, a) in self.queries:
-            res = f(*a)
+        for (q_func, q_args) in self.queries:
+            res = q_func(*q_args)
             if res is False:
                 return self.abort()
         return self.commit()

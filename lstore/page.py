@@ -1,70 +1,32 @@
 # lstore/page.py
-import os
-import struct
-from lstore.config import PAGE_SIZE, MAX_RECORDS_PER_PAGE
 
-PAGE_HEADER_FORMAT = "III"   # [page_id, page_type, num_records]
-# page_type=0 => base, page_type=1 => tail
+from lstore.config import PAGE_SIZE
 
 class Page:
-    def __init__(self, page_id, page_type=0):
-        self.page_id = page_id
-        self.page_type = page_type  # 0=base,1=tail
-        self.num_records = 0
-        self.records = []
-        self.dirty = False
+    """
+    A physical page in columnar storage.
+    We store an array of fixed-size slots (8 bytes) for this column's data.
+    """
+    RECORD_SIZE = 8  # 8 bytes per record
 
-    def has_capacity(self):
-        return self.num_records < MAX_RECORDS_PER_PAGE
+    def __init__(self, data=bytearray(PAGE_SIZE)):
+        self.data = data
 
-    def write_record(self, record):
-        if self.has_capacity():
-            self.records.append(record)
-            self.num_records += 1
-            self.dirty = True
-            return True
-        return False
+    def capacity(self):
+        return PAGE_SIZE // Page.RECORD_SIZE
 
-    def get_record(self, slot):
-        if slot < self.num_records:
-            return self.records[slot]
-        return None
+    def read(self, slot):
+        """
+        Read 8 bytes at slot index 'slot', return as an integer
+        """
+        start = slot * Page.RECORD_SIZE
+        val_bytes = self.data[start:start+8]
+        return int.from_bytes(val_bytes, byteorder='little', signed=True)
 
-    def set_record(self, slot, record):
-        if slot < self.num_records:
-            self.records[slot] = record
-            self.dirty = True
-
-    def to_bytes(self):
-        header = struct.pack(PAGE_HEADER_FORMAT, self.page_id, self.page_type, self.num_records)
-        body = b""
-        for rec in self.records:
-            # store # of columns
-            num_cols = len(rec)
-            body += struct.pack("I", num_cols)
-            for val in rec:
-                body += struct.pack("q", val)  # 64-bit int
-        return header + body
-
-    @staticmethod
-    def from_bytes(data):
-        if len(data) < 12:
-            return None
-        page_id, page_type, num_records = struct.unpack(PAGE_HEADER_FORMAT, data[:12])
-        p = Page(page_id, page_type)
-        offset = 12
-        for _ in range(num_records):
-            if offset+4 > len(data):
-                break
-            (num_cols,) = struct.unpack("I", data[offset:offset+4])
-            offset += 4
-            rec = []
-            for __ in range(num_cols):
-                if offset+8 > len(data):
-                    break
-                val = struct.unpack("q", data[offset:offset+8])[0]
-                offset += 8
-                rec.append(val)
-            p.records.append(rec)
-        p.num_records = len(p.records)
-        return p
+    def write(self, slot, value):
+        """
+        Write 8-byte integer at slot index 'slot'
+        """
+        start = slot * Page.RECORD_SIZE
+        val_bytes = value.to_bytes(8, byteorder='little', signed=True)
+        self.data[start:start+8] = val_bytes

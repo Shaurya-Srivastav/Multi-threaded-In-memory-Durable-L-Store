@@ -1,70 +1,67 @@
 # lstore/index.py
 
 class Index:
-    """
-    A data structure holding indices for the table.
-    The primary key column is always indexed by a dictionary pk_index: { primary_key_value: rid }
-    For other columns, we do a naive approach for milestone1.
-    """
     def __init__(self, table):
         self.table = table
-        # primary key index
-        self.pk_index = {}   # Maps pk_value -> rid
+        # pk_index: pk_value -> rid
+        self.pk_index = {}
+        # optional secondary indexes: col -> { value -> set(rid) }
+        self.secondaries = [None]*table.num_columns
 
-        # If you want to store secondary indexes: self.indices[col] = something
-        self.indices = [None] * table.num_columns
+    def create_index(self, column):
+        if self.secondaries[column] is not None:
+            return
+        idx = {}
+        for pk_val, rid in self.pk_index.items():
+            (pid, slot) = self.table.page_directory[rid]
+            page = self.table.bufferpool.get_page(pid)
+            rec = page.get_record(slot)
+            val = rec[column]
+            idx.setdefault(val, set()).add(rid)
+        self.secondaries[column] = idx
+
+    def drop_index(self, column):
+        self.secondaries[column] = None
 
     def locate(self, column, value):
-        """
-        Return a list of RIDs whose 'column' matches 'value'.
-        For column == table.key, just do pk_index lookup.
-        For other columns, do naive scanning of table.rid_to_versions.
-        """
+        # if column == self.table.key => pk_index
         if column == self.table.key:
-            # direct dictionary lookup
             rid = self.pk_index.get(value)
-            if rid is None:
-                return []
-            else:
-                return [rid]
+            return [rid] if rid is not None else []
+        if self.secondaries[column] is not None:
+            return list(self.secondaries[column].get(value, []))
         else:
-            # naive scanning
-            results = []
-            for pk_val, rid in self.pk_index.items():
-                versions = self.table.rid_to_versions[rid]
-                newest = versions[-1]
-                if newest[column] == value:
-                    results.append(rid)
-            return results
+            # naive scan
+            res = []
+            for pk, rid in self.pk_index.items():
+                (pid, slot) = self.table.page_directory[rid]
+                pg = self.table.bufferpool.get_page(pid)
+                r = pg.get_record(slot)
+                if r[column] == value:
+                    res.append(rid)
+            return res
 
     def locate_range(self, begin, end, column):
-        """
-        Return the RIDs of all records whose value in 'column' is in [begin, end].
-        """
-        results = []
-        # If it's the PK column, we can do a direct approach:
         if column == self.table.key:
-            # all pk_index keys are the PK. So let's just check for keys in [begin..end].
-            # But we still need to confirm the record exists, so:
-            for pk_val in self.pk_index.keys():
-                if pk_val >= begin and pk_val <= end:
-                    rid = self.pk_index[pk_val]
-                    results.append(rid)
-            return results
-        else:
-            # naive scanning
+            # pk range
+            rids = []
             for pk_val, rid in self.pk_index.items():
-                versions = self.table.rid_to_versions[rid]
-                newest = versions[-1]
-                col_val = newest[column]
-                if col_val >= begin and col_val <= end:
-                    results.append(rid)
-            return results
-
-    def create_index(self, column_number):
-        # optional
-        pass
-
-    def drop_index(self, column_number):
-        # optional
-        pass
+                if begin <= pk_val <= end:
+                    rids.append(rid)
+            return rids
+        if self.secondaries[column] is not None:
+            res = []
+            for val, ridset in self.secondaries[column].items():
+                if begin <= val <= end:
+                    res.extend(ridset)
+            return res
+        else:
+            # naive
+            res = []
+            for pk_val, rid in self.pk_index.items():
+                (pid, slot) = self.table.page_directory[rid]
+                r = self.table.bufferpool.get_page(pid).get_record(slot)
+                v = r[column]
+                if v >= begin and v <= end:
+                    res.append(rid)
+            return res

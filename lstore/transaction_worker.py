@@ -1,11 +1,6 @@
-from lstore.table import Table, Record
-from lstore.index import Index
+# lstore/transaction_worker.py
 
 class TransactionWorker:
-
-    """
-    # Creates a transaction worker object.
-    """
     def __init__(self, transactions=[]):
         self.transactions = transactions
         self.stats = []
@@ -15,17 +10,10 @@ class TransactionWorker:
         self.transactions.append(t)
 
     def run(self):
-        # single-threaded for milestone1
-        self.__run()
+        for tx in self.transactions:
+            outcome = tx.run()
+            self.stats.append(outcome)
+        self.result = sum(1 for x in self.stats if x is True)
 
     def join(self):
-        # no-op
         pass
-
-    def __run(self):
-        for transaction in self.transactions:
-            # each transaction returns True if committed or False if aborted
-            self.stats.append(transaction.run())
-        # stores the number of transactions that committed
-        self.result = len(list(filter(lambda x: x, self.stats)))
-

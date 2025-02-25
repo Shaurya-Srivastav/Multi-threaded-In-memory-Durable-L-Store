@@ -221,6 +221,11 @@ class Query:
             results.append(Record(rid, search_key, projected))  # ✅ Fix: Return a Record object
         else:
             rids = self.table.index.locate(search_key_index, search_key)
+            if len(rids) == 0:
+                for rid, versions in self.table.rid_to_versions.items():
+                    if search_key == versions[-1][search_key_index]:
+                        rids.append(rid)
+                
             for rid in rids:
                 versions = self.table.rid_to_versions[rid]
                 newest = versions[-1]

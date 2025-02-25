@@ -85,7 +85,7 @@ class Database:
         self.db_path = path
         if not os.path.exists(path):
             os.makedirs(path)
-            print("Database directory created.")
+            # print("Database directory created.")
             return
         
         for file in os.listdir(path):
@@ -93,7 +93,7 @@ class Database:
                 with open(os.path.join(path, file), "rb") as f:
                     table = pickle.load(f)
                     self.tables[table.name] = table
-        print("Database loaded from disk.")
+        # print("Database loaded from disk.")
 
     def close(self):
         """Saves all tables and their data to disk."""
@@ -103,7 +103,7 @@ class Database:
         for table_name, table in self.tables.items():
             with open(os.path.join(self.db_path, f"{table_name}.tbl"), "wb") as f:
                 pickle.dump(table, f)
-        print("Database saved to disk.")
+        # print("Database saved to disk.")
 
     def create_table(self, name, num_columns, key_index):
         """Creates a new table."""

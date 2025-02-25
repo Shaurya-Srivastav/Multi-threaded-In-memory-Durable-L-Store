@@ -248,10 +248,10 @@ class Query:
             if val is not None:
                 newest[col_idx] = val  # Apply updates
 
-        curr_key = self.table.index.pk_index[versions[-1][self.table.key_index]]
-        new_key = columns[self.table.key_index]
-        if (new_key != curr_key):
-            self.table.index.pk_index[new_key] = self.table.index.pk_index.pop(curr_key)
+        # curr_key = self.table.index.pk_index[versions[-1][self.table.key_index]]
+        # new_key = columns[self.table.key_index]
+        # if (new_key != curr_key):
+        #     self.table.index.pk_index[new_key] = self.table.index.pk_index.pop(curr_key)
 
         versions.append(newest)  # Add new version
         return True

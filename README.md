@@ -4,7 +4,7 @@
 ## Contributions:
 
 - Shaurya Srivastav - Implementation of core components
-- Vedant Patel - Debugging 
+- Vedant Patel - Optimized core components and improved test code workability
 - Ayush Tripathi - Coordination, serialization methods, assisted with bufferpool
 - Stella Huang - Testing + Code Integrity, Assisted in implementation of indices 
 - Muhammad Laiq - 

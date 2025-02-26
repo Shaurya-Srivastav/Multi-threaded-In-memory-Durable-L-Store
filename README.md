@@ -3,11 +3,11 @@
 
 ## Contributions:
 
-- Shaurya Srivastav - Implementation
-- Vedant Patel - Implementation
-- Ayush Tripathi - Coordination and Assignment, assisted with initial knowledge base
-- Stella Huang - Initial research + class implementations
-- Muhammad Laiq - Assisted in initial abstraction of roles
+- Shaurya Srivastav - Implementation of core components
+- Vedant Patel - Debugging 
+- Ayush Tripathi - Coordination, serialization methods, assisted with bufferpool
+- Stella Huang - Testing + Code Integrity, Assisted in implementation of indices 
+- Muhammad Laiq - 
 
 
 

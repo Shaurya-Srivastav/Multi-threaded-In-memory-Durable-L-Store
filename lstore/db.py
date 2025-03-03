@@ -14,7 +14,7 @@ class Database:
         self.tables = {}
         self.db_path = None
         self.bufferpool = Bufferpool(bufferpool_size)
-        # Single global lock manager for the entire database
+        # Single global lock manager for concurrency
         self.lock_manager = LockManager()
         self._next_txn_id = 0
 
@@ -32,8 +32,10 @@ class Database:
                     data = f.read()
                     if not data:
                         continue
-                    table = msgpack.unpackb(data, raw=False, ext_hook=ext_hook, strict_map_key=False)
-                    table.db = self  # ensure table can reference db for LockManager
+                    table = msgpack.unpackb(
+                        data, raw=False, ext_hook=ext_hook, strict_map_key=False
+                    )
+                    table.db = self
                     self.tables[table.name] = table
 
     def close(self):
@@ -48,7 +50,6 @@ class Database:
 
     def create_table(self, name, num_columns, key_index):
         table = Table(name, num_columns, key_index)
-        # Let the table know about the DB (for lock manager, etc.)
         table.db = self
         self.tables[name] = table
         return table
@@ -59,16 +60,20 @@ class Database:
             os.remove(os.path.join(self.db_path, f"{name}.tbl"))
 
     def get_table(self, name):
-        return self.tables.get(name, None)
+        tbl = self.tables.get(name)
+        if tbl is None:
+            # We throw an error so user/test sees a clear message
+            raise RuntimeError(
+                f"Table '{name}' not found. Did you create it or load it from disk?"
+            )
+        return tbl
 
     def get_next_txn_id(self):
-        """
-        Simple global transaction-id generator.
-        """
         self._next_txn_id += 1
         return self._next_txn_id
 
-# Serialization Functions:
+
+# --- Serialization Helpers ---
 
 EXT_CODE_INDEX  = 1
 EXT_CODE_PAGE   = 2
@@ -77,10 +82,14 @@ EXT_CODE_RECORD = 4
 EXT_CODE_TABLE  = 5
 
 def custom_default(obj):
+    from lstore.index import Index
+    from lstore.page import Page
+    from lstore.query import Query
+    from lstore.table import Table, Record
+
     if isinstance(obj, Index):
         state = obj.__dict__.copy()
-        # 'table' often leads to recursion, so skip or store table name only
-        state.pop("table", None)
+        state.pop("table", None)  # avoid recursion
         packed_state = msgpack.packb(state, use_bin_type=True)
         return msgpack.ExtType(EXT_CODE_INDEX, packed_state)
 
@@ -101,15 +110,19 @@ def custom_default(obj):
 
     elif isinstance(obj, Table):
         state = obj.__dict__.copy()
-        # Remove the DB reference before packing
+        # remove DB reference
         state.pop("db", None)
         packed_state = msgpack.packb(state, use_bin_type=True, default=custom_default)
         return msgpack.ExtType(EXT_CODE_TABLE, packed_state)
 
-    # Fallback
     return None
 
 def ext_hook(code, data):
+    from lstore.index import Index
+    from lstore.page import Page
+    from lstore.query import Query
+    from lstore.table import Table, Record
+
     if code == EXT_CODE_INDEX:
         state = msgpack.unpackb(data, raw=False, strict_map_key=False)
         idx = Index(None)
@@ -122,17 +135,16 @@ def ext_hook(code, data):
         return page
     elif code == EXT_CODE_QUERY:
         state = msgpack.unpackb(data, raw=False, strict_map_key=False)
-        query = Query(Table(state.get("table_name", "unknown")))
-        return query
+        q = Query(Table(state.get("table_name", "unknown")))
+        return q
     elif code == EXT_CODE_RECORD:
         state = msgpack.unpackb(data, raw=False, strict_map_key=False)
-        from lstore.table import Record
         record = Record(0, None, None)
         record.__dict__.update(state)
         return record
     elif code == EXT_CODE_TABLE:
         state = msgpack.unpackb(data, raw=False, strict_map_key=False, ext_hook=ext_hook)
-        table = Table(state["name"], state["num_columns"], state["key"])
-        table.__dict__.update(state)
-        return table
+        tbl = Table(state["name"], state["num_columns"], state["key"])
+        tbl.__dict__.update(state)
+        return tbl
     return None

@@ -1,4 +1,4 @@
-# lstore/page.py
+# page.py
 
 from lstore.config import PAGE_SIZE
 

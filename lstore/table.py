@@ -1,4 +1,4 @@
-# lstore/table.py
+# table.py
 
 import threading
 from lstore.index import Index
@@ -11,26 +11,26 @@ class Record:
 
 class Table:
     """
-    :param name: str
-    :param num_columns: int
-    :param key: int
+    In-memory table storing:
+    - name
+    - num_columns
+    - key (primary key column index)
+    - rid_to_versions: dict of rid -> [versions], each version is a list of col values
+    - index: primary key + optional secondaries
+    - next_rid: generator for new record IDs
+    - db: a reference to the Database for concurrency
     """
+
     def __init__(self, name, num_columns, key):
         self.name = name
         self.num_columns = num_columns
         self.key = key
 
-        # Directory or internal structures
-        self.page_directory = {}
         self.rid_to_versions = {}
-
-        # The table's index
         self.index = Index(self)
-
-        # For generating RIDs
         self.next_rid = 0
 
-        # The database instance (set externally after creation, e.g. table.db = self_db)
+        # for concurrency or references
         self.db = None
 
     def get_new_rid(self):
@@ -40,32 +40,29 @@ class Table:
 
     def insert_record(self, record_values):
         """
-        Insert record values (list of columns).
+        Insert record_values (list of columns).
         Return the new RID.
         """
         rid = self.get_new_rid()
         self.rid_to_versions[rid] = [record_values]
-        # Update PK index
         pk_val = record_values[self.key]
         self.index.pk_index[pk_val] = rid
         return rid
 
+    def get_latest_version(self, rid):
+        if rid not in self.rid_to_versions:
+            return None
+        return self.rid_to_versions[rid][-1]
+
     def merge_base_tail(self):
         """
-        Simple example of merging: if a record has multiple versions, keep only the latest.
-        This is a placeholder for a more robust logic.
+        Stub for merging: keep only the newest version for each record.
         """
         for rid, versions in self.rid_to_versions.items():
             if len(versions) > 1:
-                # Keep only the final version
                 newest = versions[-1]
                 self.rid_to_versions[rid] = [newest]
 
     def start_background_merge(self):
         merge_thread = threading.Thread(target=self.merge_base_tail, daemon=True)
         merge_thread.start()
-
-    def get_latest_version(self, rid):
-        if rid in self.rid_to_versions:
-            return self.rid_to_versions[rid][-1]
-        return None

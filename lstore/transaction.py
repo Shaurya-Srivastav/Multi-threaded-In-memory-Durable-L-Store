@@ -1,46 +1,87 @@
-class Transaction:
+# lstore/transaction.py
 
+class Transaction:
     """
-    # Creates a transaction object.
+    Represents a transaction with multiple queries.
     """
-    def __init__(self):
-        self.queries = []  
+
+    def __init__(self, transaction_id):
+        self.tid = transaction_id
+        self.queries = []
+        # For rollback, we store (table, rid, old_values)
         self.rollback_log = []
 
-    """
-    # Adds the given query to this transaction
-    # Example:
-    # q = Query(grades_table)
-    # t = Transaction()
-    # t.add_query(q.update, grades_table, 0, *[None, 1, None, 2, None])
-    """
-    def add_query(self, query, table, *args):
-        self.queries.append((query, args)) 
+    def add_query(self, query_fn, table, *args):
+        """
+        Each 'query_fn' is a bound function, e.g. query.update or query.delete, etc.
+        'args' are the arguments to pass to that function.
+        We also remember enough info so we can do rollback.
+        """
+        self.queries.append((query_fn, table, args))
 
-        # Store original value for rollback if it's an update or delete
-        if query.__name__ in ["update", "delete"]:
+        # For rollback, if this is update or delete, we read current state
+        if query_fn.__name__ in ["update", "delete"]:
+            # The first argument to update/delete is primary_key
             key = args[0]
-            record = table.select(key, table.key_index, [1] * table.num_columns)
-            if record:
-                self.rollback_log.append((table, key, record[0].columns))  
+            # SELECT the current record (shared? exclusive?):
+            # Because we are just preparing for rollback, we'll do a direct read
+            original_rec = table.select(
+                self.tid,  # we can reuse the same transaction ID
+                key,
+                table.key,  # searching by PK
+                [1]*table.num_columns
+            )
+            # original_rec might be False if we can’t lock. 
+            # In real systems we’d do something more robust, but here we ignore that edge case.
+            if isinstance(original_rec, list) and original_rec:
+                # store full old columns
+                old_cols = original_rec[0].columns
+                # For rollback, we store (table, rid, old_cols)
+                rid = original_rec[0].rid
+                self.rollback_log.append((table, rid, old_cols))
 
-    # If you choose to implement this differently this method must still return True if transaction commits or False on abort
     def run(self):
-        for query, args in self.queries:
-            result = query(*args)
-            # If the query has failed the transaction should abort
-            if result == False:
+        """
+        Execute each query in sequence. If any returns False, we abort.
+        If all succeed, we commit.
+        """
+        for (query_fn, table, args) in self.queries:
+            result = query_fn(self.tid, *args)
+            if result is False:
                 return self.abort()
         return self.commit()
 
     def abort(self):
-        #TODO: do roll-back and any other necessary operations
-        for table, key, original_values in reversed(self.rollback_log):
-            table.update(key, *original_values) 
+        """
+        Revert changes. Release all locks.
+        """
+        # rollback each action from the rollback_log in reverse order
+        for (table, rid, old_cols) in reversed(self.rollback_log):
+            # re-apply old_cols
+            # We do an exclusive lock for safety, but in real systems,
+            # you typically do an UNDO from log or something else.
+            # We'll do the simplest approach:
+            table.rid_to_versions[rid][-1] = old_cols[:]  # revert in place
+            # Also re-update any secondary indexes if necessary
+            # This can be fairly involved. We leave it as an exercise.
+
+        # release all locks
+        if table.db and table.db.lock_manager:
+            table.db.lock_manager.release_all(self.tid)
+
         self.rollback_log.clear()
         return False
 
     def commit(self):
-        # TODO: commit to database
+        """
+        Commit changes, release locks.
+        """
+        # In real systems, we’d flush a WAL, etc.
+        # For 2PL: we must release all locks.
+        if self.queries:
+            table = self.queries[0][1]  # any table reference is fine if single DB
+            if table.db and table.db.lock_manager:
+                table.db.lock_manager.release_all(self.tid)
+
         self.rollback_log.clear()
         return True

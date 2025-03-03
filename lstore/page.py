@@ -1,10 +1,13 @@
+# lstore/page.py
+
 from lstore.config import PAGE_SIZE
 
 class Page:
+    RECORD_SIZE = 8
 
-    RECORD_SIZE = 8 
-
-    def __init__(self, data=bytearray(PAGE_SIZE)):
+    def __init__(self, data=None):
+        if data is None:
+            data = bytearray(PAGE_SIZE)
         self.data = data
 
     def capacity(self):

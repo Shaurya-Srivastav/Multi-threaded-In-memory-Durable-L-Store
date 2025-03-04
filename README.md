@@ -1,7 +1,3 @@
-Below is an **updated overview** that extends your existing “Single-threaded, In-memory L-Store” design into a **multi-threaded** version with **transactional** semantics, **strict two-phase locking (2PL)**, and basic **no-wait** concurrency control. This incorporates the core ideas from Milestone 1 (in-memory, versioned records, base/tail organization, etc.) with the new requirements of Milestone 3 (transaction atomicity/isolation and concurrency).
-
----
-
 ## Multi-Threaded, In-Memory & Durable L-Store
 
 ### 1. Contributions

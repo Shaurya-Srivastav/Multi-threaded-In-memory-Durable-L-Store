@@ -75,7 +75,7 @@ for key in keys:
         print('select error on', key, ':', record, ', correct:', records[key])
     else:
         pass
-        print('select on', key, ':', record)
+        # print('select on', key, ':', record)
 print("Select finished")
 
 

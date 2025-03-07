@@ -160,7 +160,7 @@ class Query:
         Sum col for pk in [start_range, end_range).
         """
         relevant_pks = [pk for pk in self.table.index.pk_index.keys()
-                        if start_range <= pk < end_range]
+                        if start_range <= pk <= end_range]
         if not relevant_pks:
             return 0
 

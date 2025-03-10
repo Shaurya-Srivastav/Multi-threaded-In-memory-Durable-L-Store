@@ -32,9 +32,9 @@ class Table:
         # Database reference (set when table is attached to a Database)
         self.db = None
 
-        # For update counting and merge threshold (merging is disabled in this test)
+        # For update counting and merge threshold
         self.num_updates = 0
-        self.MERGE_THRESHOLD = 99999999
+        self.MERGE_THRESHOLD = 200
 
     def get_new_rid(self):
         rid = self.next_rid

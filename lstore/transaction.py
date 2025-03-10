@@ -1,5 +1,3 @@
-# lstore/transaction.py
-
 class Transaction:
     """
     A transaction that can run multiple queries.

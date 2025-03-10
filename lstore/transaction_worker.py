@@ -1,5 +1,3 @@
-# lstore/transaction_worker.py
-
 class TransactionWorker:
     """
     A simple worker that can run multiple transactions (synchronously).

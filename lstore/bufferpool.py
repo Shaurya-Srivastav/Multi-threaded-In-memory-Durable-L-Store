@@ -1,4 +1,3 @@
-# bufferpool.py
 import collections
 import threading
 

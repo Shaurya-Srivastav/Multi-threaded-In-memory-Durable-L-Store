@@ -1,5 +1,3 @@
-# page.py
-
 from lstore.config import PAGE_SIZE
 
 class Page:

@@ -1,5 +1,3 @@
-# index.py
-
 class Index:
     def __init__(self, table):
         self.table = table

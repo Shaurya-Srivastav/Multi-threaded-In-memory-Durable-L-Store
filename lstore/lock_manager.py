@@ -1,5 +1,3 @@
-# lock_manager.py
-
 import threading
 from collections import defaultdict
 
